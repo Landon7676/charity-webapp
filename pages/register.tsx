@@ -2,6 +2,7 @@ import { useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
+import { useRouter } from "next/router";
 
 export default function Register() {
   const [email, setEmail] = useState("");
@@ -9,6 +10,8 @@ export default function Register() {
   const [role, setRole] = useState("donor"); // default role
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +30,14 @@ export default function Register() {
       });
 
       setSuccess(true);
+
+      // Redirect based on role
+      if (role === "recipient") {
+        router.push("/family");
+      } else if (role === "donor") {
+        router.push("/donor"); // change to actual path
+      }
+
     } catch (err: any) {
       setError(err.message);
     }
