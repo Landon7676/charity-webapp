@@ -2,6 +2,7 @@ import { useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
+import { useRouter } from "next/router";
 
 export default function Register() {
   const [email, setEmail] = useState("");
@@ -9,6 +10,7 @@ export default function Register() {
   const [role, setRole] = useState("donor"); // default role
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,15 +20,16 @@ export default function Register() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
-      // Save role to Firestore
+  
+      // Save basic profile info
       await setDoc(doc(db, "users", user.uid), {
         email,
         role,
         createdAt: new Date()
       });
-
-      setSuccess(true);
+  
+      // Redirect to role-specific step
+      router.push(`/register/${role}`);
     } catch (err: any) {
       setError(err.message);
     }
