@@ -9,6 +9,7 @@ export default function Navbar() {
         <Link href="/about">About</Link>
         <Link href="/donate">Donate</Link>
         <Link href="/contact">Contact</Link>
+        <Link href ="/register">Register</Link>
       </div>
     </nav>
   );
