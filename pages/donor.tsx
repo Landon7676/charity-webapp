@@ -6,15 +6,29 @@ import {
   query,
   where,
   updateDoc,
-  doc
+  doc,
 } from "firebase/firestore";
 import { useRouter } from "next/router";
+
+// Define the Wishlist type
+type Wishlist = {
+  id: string;
+  age: number;
+  gender: string;
+  wishlist: {
+    large: string;
+    medium: string;
+    small: string;
+  };
+  claimedBy?: string | null;
+  claimedAt?: any;
+};
 
 export default function DonorPage() {
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("Male");
-  const [results, setResults] = useState<any[]>([]);
-  const [claimed, setClaimed] = useState<any[]>([]);
+  const [results, setResults] = useState<Wishlist[]>([]);
+  const [claimed, setClaimed] = useState<Wishlist[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -36,7 +50,10 @@ export default function DonorPage() {
         where("claimedBy", "==", user.uid)
       );
       const snap = await getDocs(q);
-      const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const data = snap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Wishlist[];
       setClaimed(data);
     };
 
@@ -51,38 +68,42 @@ export default function DonorPage() {
       return;
     }
 
-    const q = query(
-      collection(db, "wishlists"),
-      where("age", "==", ageNumber),
-      where("gender", "==", gender),
-      where("claimedBy", "==", null)
-    );
-
     try {
+      const q = query(
+        collection(db, "wishlists"),
+        where("age", "==", ageNumber),
+        where("gender", "==", gender)
+      );
       const querySnapshot = await getDocs(q);
-      const data = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setResults(data);
+      const filtered = querySnapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() } as Wishlist))
+        .filter((item) => !item.claimedBy);
+
+      setResults(filtered);
     } catch (error) {
-      console.error("Firestore query failed, check composite indexes:", error);
+      console.error("Search failed:", error);
     }
   };
 
   const claimWishlist = async (wishlistId: string) => {
     const user = auth.currentUser;
     if (!user) return;
+
     await updateDoc(doc(db, "wishlists", wishlistId), {
       claimedBy: user.uid,
       claimedAt: new Date(),
     });
+
     setResults(results.filter((item) => item.id !== wishlistId));
-    // Fetch claimed list again
+
+    // Refresh claimed list
     const snap = await getDocs(
       query(collection(db, "wishlists"), where("claimedBy", "==", user.uid))
     );
-    const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const data = snap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Wishlist[];
     setClaimed(data);
   };
 
@@ -115,14 +136,26 @@ export default function DonorPage() {
       </div>
 
       <h2 className="text-xl font-semibold mb-2">Matching Wishlists</h2>
-      {results.length === 0 && <p className="text-gray-500">No wishlists found.</p>}
+      {results.length === 0 && (
+        <p className="text-gray-500">No wishlists found.</p>
+      )}
       {results.map((item) => (
         <div key={item.id} className="border p-4 rounded mb-4 bg-gray-50">
-          <p><strong>Age:</strong> {item.age}</p>
-          <p><strong>Gender:</strong> {item.gender}</p>
-          <p><strong>Large:</strong> {item.wishlist.large}</p>
-          <p><strong>Medium:</strong> {item.wishlist.medium}</p>
-          <p><strong>Small:</strong> {item.wishlist.small}</p>
+          <p>
+            <strong>Age:</strong> {item.age}
+          </p>
+          <p>
+            <strong>Gender:</strong> {item.gender}
+          </p>
+          <p>
+            <strong>Large:</strong> {item.wishlist.large}
+          </p>
+          <p>
+            <strong>Medium:</strong> {item.wishlist.medium}
+          </p>
+          <p>
+            <strong>Small:</strong> {item.wishlist.small}
+          </p>
           <button
             onClick={() => claimWishlist(item.id)}
             className="mt-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
@@ -132,17 +165,34 @@ export default function DonorPage() {
         </div>
       ))}
 
-      <h2 className="text-xl font-semibold mt-8 mb-2">Your Claimed Wishlists</h2>
-      {claimed.length === 0 && <p className="text-gray-500">You haven't claimed any wishlists yet.</p>}
+      <h2 className="text-xl font-semibold mt-8 mb-2">
+        Your Claimed Wishlists
+      </h2>
+      {claimed.length === 0 && (
+        <p className="text-gray-500">
+          You haven't claimed any wishlists yet.
+        </p>
+      )}
       {claimed.map((item) => (
         <div key={item.id} className="border p-4 rounded mb-4 bg-yellow-50">
-          <p><strong>Age:</strong> {item.age}</p>
-          <p><strong>Gender:</strong> {item.gender}</p>
-          <p><strong>Large:</strong> {item.wishlist.large}</p>
-          <p><strong>Medium:</strong> {item.wishlist.medium}</p>
-          <p><strong>Small:</strong> {item.wishlist.small}</p>
+          <p>
+            <strong>Age:</strong> {item.age}
+          </p>
+          <p>
+            <strong>Gender:</strong> {item.gender}
+          </p>
+          <p>
+            <strong>Large:</strong> {item.wishlist.large}
+          </p>
+          <p>
+            <strong>Medium:</strong> {item.wishlist.medium}
+          </p>
+          <p>
+            <strong>Small:</strong> {item.wishlist.small}
+          </p>
           <p className="text-sm text-gray-600 mt-1">
-            Claimed on: {item.claimedAt?.toDate?.().toLocaleString?.() ?? "Unknown"}
+            Claimed on:{" "}
+            {item.claimedAt?.toDate?.().toLocaleString?.() ?? "Unknown"}
           </p>
         </div>
       ))}
