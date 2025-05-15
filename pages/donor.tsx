@@ -45,18 +45,29 @@ export default function DonorPage() {
   }, [router]);
 
   const handleSearch = async () => {
+    const ageNumber = Number(age);
+    if (isNaN(ageNumber)) {
+      setResults([]);
+      return;
+    }
+
     const q = query(
       collection(db, "wishlists"),
-      where("age", "==", age),
+      where("age", "==", ageNumber),
       where("gender", "==", gender),
-      where("claimedBy", "==", null) // only unclaimed wishlists
+      where("claimedBy", "==", null)
     );
-    const querySnapshot = await getDocs(q);
-    const data = querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-    setResults(data);
+
+    try {
+      const querySnapshot = await getDocs(q);
+      const data = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setResults(data);
+    } catch (error) {
+      console.error("Firestore query failed, check composite indexes:", error);
+    }
   };
 
   const claimWishlist = async (wishlistId: string) => {
@@ -64,7 +75,7 @@ export default function DonorPage() {
     if (!user) return;
     await updateDoc(doc(db, "wishlists", wishlistId), {
       claimedBy: user.uid,
-      claimedAt: new Date()
+      claimedAt: new Date(),
     });
     setResults(results.filter((item) => item.id !== wishlistId));
     // Fetch claimed list again
@@ -130,7 +141,9 @@ export default function DonorPage() {
           <p><strong>Large:</strong> {item.wishlist.large}</p>
           <p><strong>Medium:</strong> {item.wishlist.medium}</p>
           <p><strong>Small:</strong> {item.wishlist.small}</p>
-          <p className="text-sm text-gray-600 mt-1">Claimed on: {item.claimedAt?.toDate?.().toLocaleString?.() ?? "Unknown"}</p>
+          <p className="text-sm text-gray-600 mt-1">
+            Claimed on: {item.claimedAt?.toDate?.().toLocaleString?.() ?? "Unknown"}
+          </p>
         </div>
       ))}
     </main>
