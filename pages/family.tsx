@@ -82,10 +82,11 @@ export default function FamilyPage() {
           value={form.gender}
           onChange={handleChange}
           className="w-full border p-2 rounded"
+          required
         >
-          <option>Male</option>
-          <option>Female</option>
-          <option>Other</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Other">Other</option>
         </select>
         <input
           name="large"
