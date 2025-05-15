@@ -43,103 +43,124 @@ export default function Dashboard() {
   const [claimedRecipients, setClaimedRecipients] = useState<RecipientUser[]>(
     []
   );
+  const fetchData = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+    const userData = userSnap.data();
 
-      const userRef = doc(db, "users", user.uid);
-      const userSnap = await getDoc(userRef);
-      const userData = userSnap.data();
-
-      // ✅ Early return if user doesn't exist
-      if (!userData) {
-        console.error("User document not found.");
-        setLoading(false);
-        return;
-      }
-
-      const role = userData.role;
-      setRole(role);
-
-      if (role === "donor" && userData.donorProfile) {
-        const donor = userData.donorProfile;
-
-        const recipientSnaps = await getDocs(collection(db, "users"));
-        const recipients = recipientSnaps.docs
-          .filter((doc) => doc.data().role === "recipient")
-          .map((doc) => ({ id: doc.id, ...doc.data() })) as RecipientUser[];
-
-        const filtered = recipients.filter((recipient) => {
-          if (recipient.claimedBy) return false;
-
-          const r = recipient.recipientProfile;
-          if (!r) return false;
-
-          const kidCountOk = r.kidCount <= donor.childCount;
-
-          const genderOk =
-            donor.genderPref === "" ||
-            donor.genderPref === "both" ||
-            donor.genderPref === r.gender;
-
-          const ageRangeOk = (() => {
-            if (!donor.ageRange) return true;
-            const [min, max] = donor.ageRange.split("-").map(Number);
-            const ages = r.ages
-              .split(",")
-              .map((a: string) => parseInt(a.trim()));
-            return ages.every((age: number) => age >= min && age <= max);
-          })();
-
-          return kidCountOk && genderOk && ageRangeOk;
-        });
-
-        setMatches(filtered);
-        // Fetch claimed recipients for this donor
-        const claimedSnaps = await getDocs(collection(db, "users"));
-        const claimed = claimedSnaps.docs
-          .filter((doc) => doc.data().claimedBy === user.uid)
-          .map((doc) => ({ id: doc.id, ...doc.data() })) as RecipientUser[];
-
-        setClaimedRecipients(claimed);
-      }
-      if (role === "recipient") {
-        const count = userData?.recipientProfile?.kidCount || 0;
-        setKidCount(count);
-
-        if (userData?.wishlists) {
-          setWishlists(userData.wishlists);
-        } else {
-          const empty = Array.from({ length: count }, (_, i) => ({
-            childId: i + 1,
-            items: [],
-          }));
-          setWishlists(empty);
-          await updateDoc(userRef, { wishlists: empty });
-        }
-      }
-
+    // ✅ Early return if user doesn't exist
+    if (!userData) {
+      console.error("User document not found.");
       setLoading(false);
-    };
+      return;
+    }
 
+    const role = userData.role;
+    setRole(role);
+
+    if (role === "donor" && userData.donorProfile) {
+      const donor = userData.donorProfile;
+
+      const recipientSnaps = await getDocs(collection(db, "users"));
+      const recipients = recipientSnaps.docs
+        .filter((doc) => doc.data().role === "recipient")
+        .map((doc) => ({ id: doc.id, ...doc.data() })) as RecipientUser[];
+
+      const filtered = recipients.filter((recipient) => {
+        if (recipient.claimedBy) return false;
+
+        const r = recipient.recipientProfile;
+        if (!r) return false;
+
+        const kidCountOk = r.kidCount <= donor.childCount;
+
+        const genderOk =
+          donor.genderPref === "" ||
+          donor.genderPref === "both" ||
+          donor.genderPref === r.gender;
+
+        const ageRangeOk = (() => {
+          if (!donor.ageRange) return true;
+          const [min, max] = donor.ageRange.split("-").map(Number);
+          const ages = r.ages
+            .split(",")
+            .map((a: string) => parseInt(a.trim()));
+          return ages.every((age: number) => age >= min && age <= max);
+        })();
+
+        return kidCountOk && genderOk && ageRangeOk;
+      });
+
+      setMatches(filtered);
+      // Fetch claimed recipients for this donor
+      const claimedSnaps = await getDocs(collection(db, "users"));
+      const claimed = claimedSnaps.docs
+.filter(
+  (doc) =>
+    doc.data().role === "recipient" &&
+    doc.data().claimedBy === user.uid
+)
+.map((doc) => ({ id: doc.id, ...doc.data() })) as RecipientUser[];
+      setClaimedRecipients(claimed);
+      console.log("Claimed recipients:", claimed.map(c => ({ id: c.id, wishlists: c.wishlists })));
+    }
+    if (role === "recipient") {
+      const count = userData?.recipientProfile?.kidCount || 0;
+      setKidCount(count);
+
+      if (userData?.wishlists) {
+        setWishlists(userData.wishlists);
+      } else {
+        const empty = Array.from({ length: count }, (_, i) => ({
+          childId: i + 1,
+          items: [],
+        }));
+        setWishlists(empty);
+        await updateDoc(userRef, { wishlists: empty });
+      }
+    }
+
+    setLoading(false);
+  };
+  useEffect(() => {
     fetchData();
   }, []);
   const claimRecipient = async (recipientId: string) => {
     const user = auth.currentUser;
     if (!user) return;
-
+  
     const ref = doc(db, "users", recipientId);
-    await updateDoc(ref, {
-      claimedBy: user.uid,
-    });
-
-    // Optionally remove this match from UI without refetching
+    const snap = await getDoc(ref);
+    const data = snap.data();
+  
+    if (!data) return;
+  
+    // If wishlists field is missing, initialize it
+    if (!data.wishlists) {
+      const kidCount = data.recipientProfile?.kidCount || 1;
+      const emptyWishlists = Array.from({ length: kidCount }, (_, i) => ({
+        childId: i + 1,
+        items: [],
+      }));
+  
+      await updateDoc(ref, {
+        claimedBy: user.uid,
+        wishlists: emptyWishlists,
+      });
+    } else {
+      await updateDoc(ref, {
+        claimedBy: user.uid,
+      });
+    }
+  
     setMatches((prev) => prev.filter((r) => r.id !== recipientId));
-
     alert("Recipient successfully claimed!");
-  };
+
+    await fetchData();
+  };  
 
   const handleItemChange = (
     childId: number,
