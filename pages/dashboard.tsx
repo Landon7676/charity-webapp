@@ -24,6 +24,8 @@ type RecipientUser = {
   id: string;
   role: "recipient";
   recipientProfile: RecipientProfile;
+  claimedBy?: string;
+  wishlists?: Wishlist[];
 };
 
 export default function Dashboard() {
@@ -37,58 +39,72 @@ export default function Dashboard() {
   const [wishlists, setWishlists] = useState<Wishlist[]>([]);
   const [kidCount, setKidCount] = useState(0);
 
+  //Claimed recipient state
+  const [claimedRecipients, setClaimedRecipients] = useState<RecipientUser[]>(
+    []
+  );
+
   useEffect(() => {
     const fetchData = async () => {
       const user = auth.currentUser;
       if (!user) return;
 
       const userRef = doc(db, "users", user.uid);
-const userSnap = await getDoc(userRef);
-const userData = userSnap.data();
+      const userSnap = await getDoc(userRef);
+      const userData = userSnap.data();
 
-// ✅ Early return if user doesn't exist
-if (!userData) {
-  console.error("User document not found.");
-  setLoading(false);
-  return;
-}
+      // ✅ Early return if user doesn't exist
+      if (!userData) {
+        console.error("User document not found.");
+        setLoading(false);
+        return;
+      }
 
-const role = userData.role;
-setRole(role);
+      const role = userData.role;
+      setRole(role);
 
-if (role === "donor" && userData.donorProfile) {
-  const donor = userData.donorProfile;
+      if (role === "donor" && userData.donorProfile) {
+        const donor = userData.donorProfile;
 
-  const recipientSnaps = await getDocs(collection(db, "users"));
-  const recipients = recipientSnaps.docs
-    .filter((doc) => doc.data().role === "recipient")
-    .map((doc) => ({ id: doc.id, ...doc.data() })) as RecipientUser[];
+        const recipientSnaps = await getDocs(collection(db, "users"));
+        const recipients = recipientSnaps.docs
+          .filter((doc) => doc.data().role === "recipient")
+          .map((doc) => ({ id: doc.id, ...doc.data() })) as RecipientUser[];
 
-  const filtered = recipients.filter((recipient) => {
-    const r = recipient.recipientProfile;
-    if (!r) return false;
+        const filtered = recipients.filter((recipient) => {
+          if (recipient.claimedBy) return false;
 
-    const kidCountOk = r.kidCount <= donor.childCount;
+          const r = recipient.recipientProfile;
+          if (!r) return false;
 
-    const genderOk =
-      donor.genderPref === "" ||
-      donor.genderPref === "both" ||
-      donor.genderPref === r.gender;
+          const kidCountOk = r.kidCount <= donor.childCount;
 
-    const ageRangeOk = (() => {
-      if (!donor.ageRange) return true;
-      const [min, max] = donor.ageRange.split("-").map(Number);
-      const ages = r.ages
-        .split(",")
-        .map((a: string) => parseInt(a.trim()));
-      return ages.every((age: number) => age >= min && age <= max);
-    })();
+          const genderOk =
+            donor.genderPref === "" ||
+            donor.genderPref === "both" ||
+            donor.genderPref === r.gender;
 
-    return kidCountOk && genderOk && ageRangeOk;
-  });
+          const ageRangeOk = (() => {
+            if (!donor.ageRange) return true;
+            const [min, max] = donor.ageRange.split("-").map(Number);
+            const ages = r.ages
+              .split(",")
+              .map((a: string) => parseInt(a.trim()));
+            return ages.every((age: number) => age >= min && age <= max);
+          })();
 
-  setMatches(filtered);
-}
+          return kidCountOk && genderOk && ageRangeOk;
+        });
+
+        setMatches(filtered);
+        // Fetch claimed recipients for this donor
+        const claimedSnaps = await getDocs(collection(db, "users"));
+        const claimed = claimedSnaps.docs
+          .filter((doc) => doc.data().claimedBy === user.uid)
+          .map((doc) => ({ id: doc.id, ...doc.data() })) as RecipientUser[];
+
+        setClaimedRecipients(claimed);
+      }
       if (role === "recipient") {
         const count = userData?.recipientProfile?.kidCount || 0;
         setKidCount(count);
@@ -110,6 +126,20 @@ if (role === "donor" && userData.donorProfile) {
 
     fetchData();
   }, []);
+  const claimRecipient = async (recipientId: string) => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const ref = doc(db, "users", recipientId);
+    await updateDoc(ref, {
+      claimedBy: user.uid,
+    });
+
+    // Optionally remove this match from UI without refetching
+    setMatches((prev) => prev.filter((r) => r.id !== recipientId));
+
+    alert("Recipient successfully claimed!");
+  };
 
   const handleItemChange = (
     childId: number,
@@ -156,30 +186,114 @@ if (role === "donor" && userData.donorProfile) {
       <h1 className="text-2xl font-bold mb-4 text-wine">Dashboard</h1>
 
       {role === "donor" && (
-        <>
-          <h2 className="text-xl font-semibold mb-2">Matching Recipients</h2>
-          {matches.length === 0 ? (
-            <p>No matches found.</p>
-          ) : (
-            <ul className="space-y-4">
-              {matches.map((match) => (
-                <li key={match.id} className="border border-olive p-4 rounded bg-white">
-                  <p><strong>Children:</strong> {match.recipientProfile.kidCount}</p>
-                  <p><strong>Ages:</strong> {match.recipientProfile.ages}</p>
-                  <p><strong>Gender:</strong> {match.recipientProfile.gender}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
-      )}
+  <>
+    <h2 className="text-xl font-semibold mb-2">Matching Recipients</h2>
+    {matches.length === 0 ? (
+      <p>No matches found.</p>
+    ) : (
+      <>
+        <ul className="space-y-4">
+          {matches.map((match) => (
+            <li
+              key={match.id}
+              className="border border-olive p-4 rounded bg-white"
+            >
+              <p>
+                <strong>Children:</strong> {match.recipientProfile.kidCount}
+              </p>
+              <p>
+                <strong>Ages:</strong> {match.recipientProfile.ages}
+              </p>
+              <p>
+                <strong>Gender:</strong> {match.recipientProfile.gender}
+              </p>
+              <button
+                onClick={() => claimRecipient(match.id)}
+                className="mt-2 bg-indigo hover:bg-wine text-white py-1 px-3 rounded text-sm"
+              >
+                Claim Recipient
+              </button>
+            </li>
+          ))}
+        </ul>
+
+        {/* ✅ Claimed Recipients Block */}
+        <h2 className="text-xl font-semibold mt-8 mb-2">
+          My Claimed Recipients
+        </h2>
+        {claimedRecipients.length === 0 || !claimedRecipients.some (r => r.wishlists && r.wishlists.length > 0) ? (
+          <p>You haven't claimed any recipients yet.</p>
+        ) : (
+          <ul className="space-y-4">
+            {claimedRecipients.map((recip) => (
+              <li
+                key={recip.id}
+                className="border border-olive p-4 rounded bg-white"
+              >
+                <p>
+                  <strong>Children:</strong>{" "}
+                  {recip.recipientProfile.kidCount}
+                </p>
+                <p>
+                  <strong>Ages:</strong> {recip.recipientProfile.ages}
+                </p>
+                <p>
+                  <strong>Gender:</strong> {recip.recipientProfile.gender}
+                </p>
+
+                {recip.wishlists && recip.wishlists.length > 0 && (
+                  <div className="mt-4">
+                    <h3 className="font-semibold text-indigo mb-2">
+                      Wishlist
+                    </h3>
+                    {recip.wishlists.map((child) => (
+                      <div key={child.childId} className="mb-4">
+                        <h4 className="text-sm font-bold">
+                          Child {child.childId}
+                        </h4>
+                        <ul className="list-disc ml-6">
+                          {child.items.map((item, idx) => (
+                            <li key={idx}>
+                              {item.name}
+                              {item.link && (
+                                <a
+                                  href={item.link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 underline ml-2"
+                                >
+                                  View
+                                </a>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </>
+    )}
+  </>
+)}
 
       {role === "recipient" && (
         <>
-          <h2 className="text-xl font-semibold mb-2 text-indigo">Your Wishlists</h2>
+          <h2 className="text-xl font-semibold mb-2 text-indigo">
+            Your Wishlists
+          </h2>
           {wishlists.map((child) => (
-            <div key={child.childId} className="mb-6 bg-white p-4 border border-olive rounded">
-              <h3 className="text-lg font-semibold mb-2">Child {child.childId}</h3>
+            <div
+              key={child.childId}
+              className="mb-6 bg-white p-4 border border-olive rounded"
+            >
+              <h3 className="text-lg font-semibold mb-2">
+                Child {child.childId}
+              </h3>
               {child.items.map((item, idx) => (
                 <div key={idx} className="flex gap-2 mb-2">
                   <input
@@ -187,7 +301,12 @@ if (role === "donor" && userData.donorProfile) {
                     placeholder="Item name"
                     value={item.name}
                     onChange={(e) =>
-                      handleItemChange(child.childId, idx, "name", e.target.value)
+                      handleItemChange(
+                        child.childId,
+                        idx,
+                        "name",
+                        e.target.value
+                      )
                     }
                     className="flex-1 border border-olive p-2 rounded"
                   />
@@ -196,7 +315,12 @@ if (role === "donor" && userData.donorProfile) {
                     placeholder="Optional link"
                     value={item.link}
                     onChange={(e) =>
-                      handleItemChange(child.childId, idx, "link", e.target.value)
+                      handleItemChange(
+                        child.childId,
+                        idx,
+                        "link",
+                        e.target.value
+                      )
                     }
                     className="flex-1 border border-olive p-2 rounded"
                   />
