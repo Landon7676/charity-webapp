@@ -62,6 +62,7 @@ export default function RecipientForm() {
           ages,
           gender,
           documents: uploadedFiles,
+          approved: false,
         },
       });
 
