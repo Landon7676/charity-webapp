@@ -21,6 +21,7 @@ type RecipientProfile = {
  kidCount: number;
  ages: string;
  gender: string;
+ approved?: boolean;
 };
 
 
@@ -51,6 +52,7 @@ export default function Dashboard() {
  const [claimedRecipients, setClaimedRecipients] = useState<RecipientUser[]>(
    []
  );
+ const [isApproved, setIsApproved] = useState(true);
  const fetchData = async () => {
    const user = auth.currentUser;
    if (!user) return;
@@ -85,7 +87,7 @@ export default function Dashboard() {
 
      const filtered = recipients.filter((recipient) => {
        if (recipient.claimedBy) return false;
-
+       if (!recipient.recipientProfile?.approved) return false;
 
        const r = recipient.recipientProfile;
        if (!r) return false;
