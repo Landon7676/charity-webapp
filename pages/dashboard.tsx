@@ -85,9 +85,7 @@ export default function Dashboard() {
         const ageRangeOk = (() => {
           if (!donor.ageRange) return true;
           const [min, max] = donor.ageRange.split("-").map(Number);
-          const ages = r.ages
-            .split(",")
-            .map((a: string) => parseInt(a.trim()));
+          const ages = r.ages.split(",").map((a: string) => parseInt(a.trim()));
           return ages.every((age: number) => age >= min && age <= max);
         })();
 
@@ -96,16 +94,33 @@ export default function Dashboard() {
 
       setMatches(filtered);
       // Fetch claimed recipients for this donor
+      const claimed: RecipientUser[] = [];
       const claimedSnaps = await getDocs(collection(db, "users"));
-      const claimed = claimedSnaps.docs
-.filter(
-  (doc) =>
-    doc.data().role === "recipient" &&
-    doc.data().claimedBy === user.uid
-)
-.map((doc) => ({ id: doc.id, ...doc.data() })) as RecipientUser[];
+
+      claimedSnaps.docs.forEach((doc) => {
+        const data = doc.data();
+        const id = doc.id;
+      
+        const claimedByMatch = data.claimedBy === user.uid;
+        const isRecipient = data.role === "recipient";
+        const hasProfile = !!data.recipientProfile;
+      
+        console.log(`🧪 Evaluating doc ${id}`);
+        console.log({ claimedByMatch, isRecipient, hasProfile });
+      
+        if (isRecipient && claimedByMatch && hasProfile) {
+          claimed.push({ id, ...data } as RecipientUser);
+        }
+      });
+      
+      console.log("👁️ Claimed recipients found:", claimed.length);
+      console.log("📦 Claimed recipients:", claimed);
+
       setClaimedRecipients(claimed);
-      console.log("Claimed recipients:", claimed.map(c => ({ id: c.id, wishlists: c.wishlists })));
+      console.log(
+        "Claimed recipients:",
+        claimed.map((c) => ({ id: c.id, wishlists: c.wishlists }))
+      );
     }
     if (role === "recipient") {
       const count = userData?.recipientProfile?.kidCount || 0;
@@ -126,18 +141,18 @@ export default function Dashboard() {
     setLoading(false);
   };
   useEffect(() => {
-    fetchData();
+    void fetchData();
   }, []);
   const claimRecipient = async (recipientId: string) => {
     const user = auth.currentUser;
     if (!user) return;
-  
+
     const ref = doc(db, "users", recipientId);
     const snap = await getDoc(ref);
     const data = snap.data();
-  
+
     if (!data) return;
-  
+
     // If wishlists field is missing, initialize it
     if (!data.wishlists) {
       const kidCount = data.recipientProfile?.kidCount || 1;
@@ -145,7 +160,7 @@ export default function Dashboard() {
         childId: i + 1,
         items: [],
       }));
-  
+
       await updateDoc(ref, {
         claimedBy: user.uid,
         wishlists: emptyWishlists,
@@ -155,12 +170,11 @@ export default function Dashboard() {
         claimedBy: user.uid,
       });
     }
-  
-    setMatches((prev) => prev.filter((r) => r.id !== recipientId));
+
     alert("Recipient successfully claimed!");
 
     await fetchData();
-  };  
+  };
 
   const handleItemChange = (
     childId: number,
@@ -205,103 +219,131 @@ export default function Dashboard() {
   return (
     <main className="p-6">
       <h1 className="text-2xl font-bold mb-4 text-wine">Dashboard</h1>
-
+  
+      {/* DONOR DASHBOARD */}
       {role === "donor" && (
-  <>
-    <h2 className="text-xl font-semibold mb-2">Matching Recipients</h2>
-    {matches.length === 0 ? (
-      <p>No matches found.</p>
-    ) : (
-      <>
-        <ul className="space-y-4">
-          {matches.map((match) => (
-            <li
-              key={match.id}
-              className="border border-olive p-4 rounded bg-white"
-            >
-              <p>
-                <strong>Children:</strong> {match.recipientProfile.kidCount}
-              </p>
-              <p>
-                <strong>Ages:</strong> {match.recipientProfile.ages}
-              </p>
-              <p>
-                <strong>Gender:</strong> {match.recipientProfile.gender}
-              </p>
-              <button
-                onClick={() => claimRecipient(match.id)}
-                className="mt-2 bg-indigo hover:bg-wine text-white py-1 px-3 rounded text-sm"
-              >
-                Claim Recipient
-              </button>
-            </li>
-          ))}
-        </ul>
-
-        {/* ✅ Claimed Recipients Block */}
-        <h2 className="text-xl font-semibold mt-8 mb-2">
-          My Claimed Recipients
-        </h2>
-        {claimedRecipients.length === 0 || !claimedRecipients.some (r => r.wishlists && r.wishlists.length > 0) ? (
-          <p>You haven't claimed any recipients yet.</p>
-        ) : (
-          <ul className="space-y-4">
-            {claimedRecipients.map((recip) => (
-              <li
-                key={recip.id}
-                className="border border-olive p-4 rounded bg-white"
-              >
-                <p>
-                  <strong>Children:</strong>{" "}
-                  {recip.recipientProfile.kidCount}
-                </p>
-                <p>
-                  <strong>Ages:</strong> {recip.recipientProfile.ages}
-                </p>
-                <p>
-                  <strong>Gender:</strong> {recip.recipientProfile.gender}
-                </p>
-
-                {recip.wishlists && recip.wishlists.length > 0 && (
-                  <div className="mt-4">
-                    <h3 className="font-semibold text-indigo mb-2">
-                      Wishlist
-                    </h3>
-                    {recip.wishlists.map((child) => (
-                      <div key={child.childId} className="mb-4">
-                        <h4 className="text-sm font-bold">
-                          Child {child.childId}
-                        </h4>
-                        <ul className="list-disc ml-6">
-                          {child.items.map((item, idx) => (
-                            <li key={idx}>
-                              {item.name}
-                              {item.link && (
-                                <a
-                                  href={item.link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 underline ml-2"
-                                >
-                                  View
-                                </a>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
+        <>
+          {/* 🔹 Matching Recipients */}
+          <h2 className="text-xl font-semibold mb-2">Matching Recipients</h2>
+          {matches.length === 0 ? (
+            <p>No matches found.</p>
+          ) : (
+            <ul className="space-y-4">
+              {matches.map((match) => (
+                <li
+                  key={match.id}
+                  className="border border-olive p-4 rounded bg-white"
+                >
+                  <p>
+                    <strong>Children:</strong>{" "}
+                    {match.recipientProfile.kidCount}
+                  </p>
+                  <p>
+                    <strong>Ages:</strong> {match.recipientProfile.ages}
+                  </p>
+                  <p>
+                    <strong>Gender:</strong> {match.recipientProfile.gender}
+                  </p>
+                  <button
+                    onClick={() => claimRecipient(match.id)}
+                    className="mt-2 bg-indigo hover:bg-wine text-white py-1 px-3 rounded text-sm"
+                  >
+                    Claim Recipient
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+  
+          {/* 🔹 Claimed Recipients (Always Visible) */}
+          <h2 className="text-xl font-semibold mt-8 mb-2">
+            My Claimed Recipients
+          </h2>
+  
+          <p className="text-sm text-gray-500">
+            👀 Claimed recipients found: {claimedRecipients.length}
+          </p>
+  
+          {claimedRecipients.length === 0 ? (
+            <p>You haven't claimed any recipients yet.</p>
+          ) : (
+            <ul className="space-y-4">
+              {claimedRecipients.map((recip) => {
+                console.log("🎯 Rendering claimed recipient:", recip);
+  
+                if (!recip.recipientProfile) {
+                  return (
+                    <li
+                      key={recip.id}
+                      className="border p-4 rounded bg-red-100 text-red-700"
+                    >
+                      ⚠️ Missing profile data for recipient ID: {recip.id}
+                    </li>
+                  );
+                }
+  
+                return (
+                  <li
+                    key={recip.id}
+                    className="border border-olive p-4 rounded bg-white"
+                  >
+                    <p>
+                      <strong>Children:</strong>{" "}
+                      {recip.recipientProfile.kidCount ?? "N/A"}
+                    </p>
+                    <p>
+                      <strong>Ages:</strong>{" "}
+                      {recip.recipientProfile.ages ?? "N/A"}
+                    </p>
+                    <p>
+                      <strong>Gender:</strong>{" "}
+                      {recip.recipientProfile.gender || "Not specified"}
+                    </p>
+  
+                    {recip.wishlists && recip.wishlists.length > 0 ? (
+                      <div className="mt-4">
+                        <h3 className="font-semibold text-indigo mb-2">
+                          Wishlist
+                        </h3>
+                        {recip.wishlists.map((child) => (
+                          <div key={child.childId} className="mb-4">
+                            <h4 className="text-sm font-bold">
+                              Child {child.childId}
+                            </h4>
+                            <ul className="list-disc ml-6">
+                              {child.items.map((item, idx) => (
+                                <li key={idx}>
+                                  {item.name || "Unnamed item"}
+                                  {item.link && (
+                                    <a
+                                      href={item.link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 underline ml-2"
+                                    >
+                                      View
+                                    </a>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </>
-    )}
-  </>
-)}
-
+                    ) : (
+                      <p className="text-sm italic mt-2 text-muted">
+                        No wishlist submitted yet.
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </>
+      )}
+  
+      {/* RECIPIENT DASHBOARD */}
       {role === "recipient" && (
         <>
           <h2 className="text-xl font-semibold mb-2 text-indigo">
@@ -364,5 +406,5 @@ export default function Dashboard() {
         </>
       )}
     </main>
-  );
+  );  
 }
