@@ -1,4 +1,6 @@
-/** @type {import('tailwindcss').Config} */
+// tailwind.config.js
+const plugin = require('tailwindcss/plugin');
+
 module.exports = {
   content: [
     "./pages/**/*.{ts,tsx}",
@@ -17,8 +19,15 @@ module.exports = {
         wine: "#882255",
         purple: "#AA4499",
         palegray: "#DDDDDD",
+        background: 'oklch(var(--background) / <alpha-value>)',
+        foreground: 'oklch(var(--foreground) / <alpha-value>)',
+        primary: 'oklch(var(--primary) / <alpha-value>)',
+        'primary-foreground': 'oklch(var(--primary-foreground) / <alpha-value>)',
+        secondary: 'oklch(var(--secondary) / <alpha-value>)',
+        'secondary-foreground': 'oklch(var(--secondary-foreground) / <alpha-value>)',
+        // Add more if needed
       },
     },
   },
   plugins: [],
-};
+}

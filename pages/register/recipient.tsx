@@ -16,7 +16,6 @@ export default function RecipientForm() {
     e.preventDefault();
     setError("");
 
-    // validation
     if (!address.toLowerCase().includes("canton")) {
       setError("Address must be in Canton.");
       return;
@@ -51,21 +50,21 @@ export default function RecipientForm() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-palegray p-6 text-indigo">
+    <main className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
       <form
         onSubmit={handleSubmit}
-        className="bg-white border border-indigo shadow-md rounded p-8 max-w-md w-full"
+        className="bg-card text-card-foreground border border-border shadow-md rounded-lg p-8 max-w-md w-full"
       >
-        <h2 className="text-2xl font-bold mb-6 text-center text-wine">Recipient Info</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center text-primary">Recipient Info</h2>
 
-        {error && <p className="text-rose mb-4">{error}</p>}
+        {error && <p className="text-destructive mb-4">{error}</p>}
 
         <label className="block mb-2 text-sm font-medium">Address</label>
         <input
           type="text"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          className="w-full p-2 border border-olive rounded mb-4"
+          className="w-full p-2 border border-border bg-background text-foreground rounded mb-4"
           placeholder="e.g. 123 Main St, Canton MI 48188"
           required
         />
@@ -75,7 +74,7 @@ export default function RecipientForm() {
           type="text"
           value={zipCode}
           onChange={(e) => setZipCode(e.target.value)}
-          className="w-full p-2 border border-olive rounded mb-4"
+          className="w-full p-2 border border-border bg-background text-foreground rounded mb-4"
           required
         />
 
@@ -85,7 +84,7 @@ export default function RecipientForm() {
           value={kidCount}
           min={1}
           onChange={(e) => setKidCount(parseInt(e.target.value))}
-          className="w-full p-2 border border-olive rounded mb-4"
+          className="w-full p-2 border border-border bg-background text-foreground rounded mb-4"
           required
         />
 
@@ -94,7 +93,7 @@ export default function RecipientForm() {
           type="text"
           value={ages}
           onChange={(e) => setAges(e.target.value)}
-          className="w-full p-2 border border-olive rounded mb-4"
+          className="w-full p-2 border border-border bg-background text-foreground rounded mb-4"
           placeholder="e.g. 3, 7, 10"
           required
         />
@@ -103,7 +102,7 @@ export default function RecipientForm() {
         <select
           value={gender}
           onChange={(e) => setGender(e.target.value)}
-          className="w-full p-2 border border-olive rounded mb-6"
+          className="w-full p-2 border border-border bg-background text-foreground rounded mb-6"
         >
           <option value="">N/A</option>
           <option value="male">Boys</option>
@@ -113,7 +112,7 @@ export default function RecipientForm() {
 
         <button
           type="submit"
-          className="w-full bg-teal hover:bg-cyan text-white py-2 px-4 rounded"
+          className="w-full bg-primary text-primary-foreground hover:bg-secondary hover:text-secondary-foreground py-2 px-4 rounded"
         >
           Submit
         </button>
