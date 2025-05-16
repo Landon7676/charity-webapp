@@ -246,7 +246,7 @@ export default function Dashboard() {
                   </p>
                   <button
                     onClick={() => claimRecipient(match.id)}
-                    className="mt-2 bg-indigo hover:bg-wine text-white py-1 px-3 rounded text-sm"
+                    className="w-full bg-primary text-primary-foreground hover:bg-secondary hover:text-secondary-foreground py-2 px-4 rounded"
                   >
                     Claim Recipient
                   </button>
@@ -399,7 +399,7 @@ export default function Dashboard() {
           ))}
           <button
             onClick={saveAll}
-            className="bg-teal hover:bg-cyan text-white py-2 px-4 rounded"
+            className="w-full bg-primary text-primary-foreground hover:bg-secondary hover:text-secondary-foreground py-2 px-4 rounded"
           >
             Save Wishlist
           </button>
