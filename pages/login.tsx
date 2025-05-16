@@ -1,15 +1,12 @@
-// pages/login.tsx
 import { useState } from "react";
-import { useRouter } from "next/router";
-import { auth, db } from "@/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { auth } from "@/lib/firebase";
+import { useRouter } from "next/router";
 import Link from "next/link";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("donor");
   const [error, setError] = useState("");
   const router = useRouter();
 
@@ -18,29 +15,8 @@ export default function Login() {
     setError("");
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      // Fetch role from Firestore
-      const docRef = doc(db, "users", user.uid);
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        const userData = docSnap.data();
-        if (userData.role !== role) {
-          setError("Selected role does not match your account.");
-          return;
-        }
-
-        // Redirect based on role
-        if (role === "recipient") {
-          router.push("/family");
-        } else {
-          router.push("/donor");
-        }
-      } else {
-        setError("No user data found.");
-      }
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push("/dashboard");
     } catch (err: any) {
       setError(err.message);
     }
@@ -48,8 +24,11 @@ export default function Login() {
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-100 p-6">
-      <form onSubmit={handleSubmit} className="bg-white shadow-md rounded p-8 max-w-md w-full">
-        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white shadow-md rounded p-8 max-w-md w-full"
+      >
+        <h2 className="text-2xl font-bold mb-6 text-center">Log In</h2>
 
         {error && <p className="text-red-600 mb-4">{error}</p>}
 
@@ -67,29 +46,19 @@ export default function Login() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full p-2 border rounded mb-4"
+          className="w-full p-2 border rounded mb-6"
           required
         />
-
-        <label className="block mb-2 text-sm font-medium">Role</label>
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-          className="w-full p-2 border rounded mb-6"
-        >
-          <option value="donor">Donor</option>
-          <option value="recipient">Recipient</option>
-        </select>
 
         <button
           type="submit"
           className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
         >
-          Login
+          Log In
         </button>
 
-        <p className="mt-4 text-center text-sm">
-          Don't have an account?{" "}
+        <p className="text-sm text-center mt-4">
+          Don&apos;t have an account?{" "}
           <Link href="/register" className="text-blue-600 hover:underline">
             Register here
           </Link>

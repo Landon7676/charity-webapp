@@ -10,30 +10,31 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("donor"); // default role
   const [error, setError] = useState("");
-
+  const [success, setSuccess] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccess(false);
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
       const user = userCredential.user;
 
-      // Save role to Firestore
+      // Save basic profile info
       await setDoc(doc(db, "users", user.uid), {
         email,
         role,
         createdAt: new Date(),
       });
 
-      // Redirect based on role
-      if (role === "recipient") {
-        router.push("/family");
-      } else if (role === "donor") {
-        router.push("/donor");
-      }
+      // Redirect to role-specific step
+      router.push(`/register/${role}`);
     } catch (err: any) {
       setError(err.message);
     }
@@ -47,6 +48,9 @@ export default function Register() {
       >
         <h2 className="text-2xl font-bold mb-6 text-center">Register</h2>
 
+        {success && (
+          <p className="text-green-600 mb-4">Registration successful!</p>
+        )}
         {error && <p className="text-red-600 mb-4">{error}</p>}
 
         <label className="block mb-2 text-sm font-medium">Email</label>
@@ -83,12 +87,10 @@ export default function Register() {
         >
           Register
         </button>
-
-        {/* Link to login page */}
-        <p className="mt-4 text-center text-sm">
+        <p className="text-sm text-center mt-4">
           Already have an account?{" "}
           <Link href="/login" className="text-blue-600 hover:underline">
-            Login here
+            Log in here
           </Link>
         </p>
       </form>
