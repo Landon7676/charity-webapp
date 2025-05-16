@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { auth, db } from "@/lib/firebase";
+import { auth, db, storage } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useRouter } from "next/router";
 
 export default function RecipientForm() {
@@ -10,6 +11,9 @@ export default function RecipientForm() {
   const [ages, setAges] = useState("");
   const [gender, setGender] = useState("");
   const [error, setError] = useState("");
+  const [residenceFile, setResidenceFile] = useState<File | null>(null);
+  const [childrenFile, setChildrenFile] = useState<File | null>(null);
+  const [incomeFile, setIncomeFile] = useState<File | null>(null);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,6 +37,23 @@ export default function RecipientForm() {
     }
 
     try {
+      const uploadedFiles: Record<string, string> = {};
+
+      const uploadFile = async (file: File | null, label: string) => {
+        if (!file) throw new Error(`${label} is missing.`);
+        if (file.size > 10 * 1024 * 1024) throw new Error(`${label} must be under 10MB.`);
+        if (file.type !== "application/pdf") throw new Error(`${label} must be a PDF.`);
+
+        const fileRef = ref(storage, `recipients/${user.uid}/${label}.pdf`);
+        await uploadBytes(fileRef, file);
+        const url = await getDownloadURL(fileRef);
+        uploadedFiles[label] = url;
+      };
+
+      await uploadFile(residenceFile, "proof-of-residence");
+      await uploadFile(childrenFile, "proof-of-children");
+      await uploadFile(incomeFile, "proof-of-income");
+
       await updateDoc(doc(db, "users", user.uid), {
         recipientProfile: {
           address,
@@ -40,6 +61,7 @@ export default function RecipientForm() {
           kidCount,
           ages,
           gender,
+          documents: uploadedFiles,
         },
       });
 
@@ -55,7 +77,13 @@ export default function RecipientForm() {
         onSubmit={handleSubmit}
         className="bg-card text-card-foreground border border-border shadow-md rounded-lg p-8 max-w-md w-full"
       >
+<<<<<<< HEAD
         <h2 className="text-2xl font-bold mb-6 text-center text-primary">Recipient Info</h2>
+=======
+        <h2 className="text-2xl font-bold mb-6 text-center text-primary">
+          Recipient Info
+        </h2>
+>>>>>>> Landon
 
         {error && <p className="text-destructive mb-4">{error}</p>}
 
@@ -109,6 +137,56 @@ export default function RecipientForm() {
           <option value="female">Girls</option>
           <option value="both">Both</option>
         </select>
+
+        <label className="block mb-2 text-sm font-medium">
+          Upload Required Proof Documents (PDF only, max 10MB each)
+        </label>
+
+        <label className="block text-sm font-medium mb-1">Proof of Residence</label>
+        <ul className="text-sm text-muted mb-4 list-disc ml-6">
+          <li>CURRENT YEAR State of MI Dept of Human Services Letter with Canton address</li>
+          <li>Driver's License or State ID (copy front & back)</li>
+          <li>Rental Agreement or Tax Bill with Canton address</li>
+          <li>Current Utility Bill with Canton address</li>
+        </ul>
+        <input
+          type="file"
+          accept="application/pdf"
+          onChange={(e) => setResidenceFile(e.target.files?.[0] || null)}
+          className="w-full mb-4"
+          required
+        />
+
+        <label className="block text-sm font-medium mb-1">Proof Children Live With You</label>
+        <ul className="text-sm text-muted mb-4 list-disc ml-6">
+          <li>State of MI DHS Letter with children's names</li>
+          <li>Custody or Guardianship papers</li>
+          <li>Rental Agreement with children's names</li>
+          <li>Student demographics page (not report cards)</li>
+        </ul>
+        <input
+          type="file"
+          accept="application/pdf"
+          onChange={(e) => setChildrenFile(e.target.files?.[0] || null)}
+          className="w-full mb-4"
+          required
+        />
+
+        <label className="block text-sm font-medium mb-1">Proof of Income / Assistance</label>
+        <ul className="text-sm text-muted mb-4 list-disc ml-6">
+          <li>DHS Letter with income page</li>
+          <li>Current Pay Stubs</li>
+          <li>Social Security Docs (Adult & Child)</li>
+          <li>Self Employment, Unemployment, Pension</li>
+          <li>Alimony, Child Support, Food Assistance (no bridge card)</li>
+        </ul>
+        <input
+          type="file"
+          accept="application/pdf"
+          onChange={(e) => setIncomeFile(e.target.files?.[0] || null)}
+          className="w-full mb-6"
+          required
+        />
 
         <button
           type="submit"
