@@ -140,7 +140,7 @@ export default function RecipientForm() {
         </label>
 
         <label className="block text-sm font-medium mb-1">Proof of Residence</label>
-        <ul className="text-sm text-foreground mb-4 list-disc ml-6">
+        <ul className="text-sm text-red-600 mb-4 list-disc ml-6">
           <li>CURRENT YEAR State of MI Dept of Human Services Letter with Canton address</li>
           <li>Driver's License or State ID (copy front & back)</li>
           <li>Rental Agreement or Tax Bill with Canton address</li>
@@ -155,7 +155,7 @@ export default function RecipientForm() {
         />
 
         <label className="block text-sm font-medium mb-1">Proof Children Live With You</label>
-        <ul className="text-sm text-foreground mb-4 list-disc ml-6">
+        <ul className="text-sm text-red-600 mb-4 list-disc ml-6">
           <li>State of MI DHS Letter with children's names</li>
           <li>Custody or Guardianship papers</li>
           <li>Rental Agreement with children's names</li>
@@ -170,7 +170,7 @@ export default function RecipientForm() {
         />
 
         <label className="block text-sm font-medium mb-1">Proof of Income / Assistance</label>
-        <ul className="text-sm text-foreground mb-4 list-disc ml-6">
+        <ul className="text-sm text-red-600 mb-4 list-disc ml-6">
           <li>DHS Letter with income page</li>
           <li>Current Pay Stubs</li>
           <li>Social Security Docs (Adult & Child)</li>
