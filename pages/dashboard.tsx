@@ -29,7 +29,7 @@ type RecipientUser = {
   wishlists?: Wishlist[];
 };
 
-const ADMIN_EMAIL = "admin@gmail.com";
+const ADMIN_EMAIL = "landon7675@gmail.com";
 
 export default function Dashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
