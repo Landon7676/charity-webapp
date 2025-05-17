@@ -37,6 +37,9 @@ export default function Navbar() {
        <Link href="/contact">Contact</Link>
 
 
+       {loggedIn && <Link href="/profile">Profile</Link>}
+
+
        {!loggedIn ? (
          <Link href="/register">Register</Link>
        ) : (
