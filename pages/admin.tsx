@@ -93,11 +93,11 @@ export default function AdminDashboard() {
                 <strong>Gender:</strong> {r.recipientProfile.gender || "N/A"}
               </p>
 
-              {r.documents && (
+              {r.recipientProfile?.documents && (
                 <div className="mt-2">
                   <h3 className="font-semibold">Uploaded Documents:</h3>
                   <ul className="list-disc ml-6 text-sm mt-1">
-                    {Object.entries(r.documents).map(
+                    {Object.entries(r.recipientProfile.documents).map(
                       ([label, url]: [string, any]) => (
                         <li key={label}>
                           {label.replace(/-/g, " ")}:{" "}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import { auth, db } from "@/lib/firebase";
 import {
   doc,
@@ -43,6 +44,8 @@ export default function Dashboard() {
   // Recipient-specific state
   const [wishlists, setWishlists] = useState<Wishlist[]>([]);
   const [kidCount, setKidCount] = useState(0);
+
+  const router = useRouter();
 
   //Claimed recipient state
   const [claimedRecipients, setClaimedRecipients] = useState<RecipientUser[]>(
@@ -154,7 +157,24 @@ export default function Dashboard() {
     setLoading(false);
   };
   useEffect(() => {
-    void fetchData();
+    const fetchAndRedirect = async () => {
+      const user = auth.currentUser;
+      if (!user) {
+        console.warn("No user signed in.");
+        return;
+      }
+  
+      const ADMIN_EMAIL = "landon7675@gmail.com";
+      if (user.email === ADMIN_EMAIL) {
+        router.push("/admin"); // 🔁 redirect admins to /admin
+        return;
+      }
+  
+      // If not admin, proceed to load their dashboard data
+      await fetchData();
+    };
+  
+    void fetchAndRedirect(); // 👈 runs the above logic
   }, []);
   const claimRecipient = async (recipientId: string) => {
     const user = auth.currentUser;
