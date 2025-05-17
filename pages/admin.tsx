@@ -5,9 +5,8 @@ import {
   getDocs,
   doc,
   updateDoc,
+  deleteDoc,
 } from "firebase/firestore";
-
-const ADMIN_EMAIL = "admin@gmail.com";
 
 export default function AdminDashboard() {
   const [pendingRecipients, setPendingRecipients] = useState<any[]>([]);
@@ -15,16 +14,21 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const fetchPendingRecipients = async () => {
-      const snap = await getDocs(collection(db, "users"));
-      const unapproved = snap.docs
-        .filter(
-          (doc) =>
-            doc.data().role === "recipient" &&
-            doc.data().recipientProfile?.approved === false
-        )
-        .map((doc) => ({ id: doc.id, ...doc.data() }));
-      setPendingRecipients(unapproved);
-      setLoading(false);
+      try {
+        const snap = await getDocs(collection(db, "users"));
+        const unapproved = snap.docs
+          .filter(
+            (doc) =>
+              doc.data().role === "recipient" &&
+              doc.data().recipientProfile?.approved === false
+          )
+          .map((doc) => ({ id: doc.id, ...doc.data() }));
+        setPendingRecipients(unapproved);
+      } catch (err) {
+        console.error("Error fetching recipients:", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchPendingRecipients();
@@ -32,11 +36,32 @@ export default function AdminDashboard() {
 
   const approveRecipient = async (id: string) => {
     const ref = doc(db, "users", id);
-    await updateDoc(ref, {
-      "recipientProfile.approved": true,
-    });
-    setPendingRecipients((prev) => prev.filter((r) => r.id !== id));
-    alert("Recipient approved!");
+    try {
+      await updateDoc(ref, {
+        "recipientProfile.approved": true,
+      });
+      setPendingRecipients((prev) => prev.filter((r) => r.id !== id));
+      alert("Recipient approved!");
+    } catch (error) {
+      console.error("Error approving recipient:", error);
+      alert("Failed to approve recipient.");
+    }
+  };
+
+  const denyRecipient = async (id: string) => {
+    const confirm = window.confirm(
+      "Are you sure you want to deny this application? This will delete their data."
+    );
+    if (!confirm) return;
+
+    try {
+      await deleteDoc(doc(db, "users", id));
+      setPendingRecipients((prev) => prev.filter((r) => r.id !== id));
+      alert("Recipient denied and deleted.");
+    } catch (error) {
+      console.error("Error denying recipient:", error);
+      alert("Failed to deny recipient.");
+    }
   };
 
   if (loading) return <p className="p-6">Loading...</p>;
@@ -44,6 +69,7 @@ export default function AdminDashboard() {
   return (
     <main className="p-6">
       <h1 className="text-2xl font-bold mb-6 text-wine">Admin Dashboard</h1>
+
       {pendingRecipients.length === 0 ? (
         <p>No pending recipients.</p>
       ) : (
@@ -63,7 +89,7 @@ export default function AdminDashboard() {
                     {Object.entries(r.recipientProfile.documents).map(
                       ([label, url]: [string, any]) => (
                         <li key={label}>
-                          {label.replace(/-/g, " ")}: {" "}
+                          {label.replace(/-/g, " ")}:{" "}
                           <a
                             href={url}
                             target="_blank"
@@ -79,12 +105,20 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              <button
-                onClick={() => approveRecipient(r.id)}
-                className="mt-4 bg-green-600 hover:bg-green-700 text-white py-1 px-4 rounded"
-              >
-                Approve
-              </button>
+              <div className="mt-4 space-x-3">
+                <button
+                  onClick={() => approveRecipient(r.id)}
+                  className="bg-green-600 hover:bg-green-700 text-white py-1 px-4 rounded"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => denyRecipient(r.id)}
+                  className="bg-red-600 hover:bg-red-700 text-white py-1 px-4 rounded"
+                >
+                  Deny
+                </button>
+              </div>
             </li>
           ))}
         </ul>
