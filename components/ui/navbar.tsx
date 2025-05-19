@@ -29,12 +29,15 @@ export default function Navbar() {
 
  return (
    <nav className="bg-white shadow p-4 flex justify-between items-center">
-     <div className="font-bold text-xl">CharitySite</div>
+     <div className="font-bold text-xl">GoodFellows</div>
      <div className="space-x-4">
        <Link href="/">Home</Link>
        <Link href="/about">About</Link>
        <Link href="/donate">Donate</Link>
        <Link href="/contact">Contact</Link>
+
+
+       {loggedIn && <Link href="/profile">Profile</Link>}
 
 
        {!loggedIn ? (

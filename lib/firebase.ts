@@ -20,6 +20,6 @@ const app = initializeApp(firebaseConfig);
 // Export services
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
+const storage = getStorage(app, "gs://goodfellows-918a2.firebasestorage.app");
 
 export { auth, db, storage };
